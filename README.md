@@ -39,9 +39,6 @@ epscrapper --dashboard DASHBOARD_URL --sJ output.json
 # scrape after authenticating through a login page
 epscrapper --login LOGIN_URL --dashboard DASHBOARD_URL --sJ output.json
 
-# scrape and download JavaScript files
-epscrapper --dashboard DASHBOARD_URL --sJ output.json --js-dir js_files
- 
 # show results on screen without saving
 epscrapper --dashboard DASHBOARD_URL
 ```
@@ -59,7 +56,6 @@ are provided, endpoints are printed to the console.
 - Searches a wide range of HTML tags and attributes to minimize missed
   resources.
 - Saves results as JSON, CSV, or plaintext files.
-- Optionally downloads JavaScript files with `--js-dir`.
 
 ## Development
 
