@@ -41,9 +41,13 @@ epscrapper --login LOGIN_URL --dashboard DASHBOARD_URL --sJ output.json
 
 # scrape and download JavaScript files
 epscrapper --dashboard DASHBOARD_URL --sJ output.json --js-dir js_files
+ 
+# show results on screen without saving
+epscrapper --dashboard DASHBOARD_URL
 ```
 
-Use `--sP` to save as plaintext and `--sC` for CSV output.
+Use `--sP` to save as plaintext and `--sC` for CSV output. If no save flags
+are provided, endpoints are printed to the console.
 
 ## Features
 
