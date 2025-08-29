@@ -146,7 +146,6 @@ def scrape(
     same_origin: bool = typer.Option(True, "--same-origin/--any-origin", help="🌐 Limit endpoints to dashboard domain."),
     include_static: bool = typer.Option(True, "--include-static/--only-api", help="📦 Include static files like .js/.css"),
     crawl: bool = typer.Option(False, "--crawl/--no-crawl", help="🧭 Crawl subpages recursively."),
-    js_dir: Path = typer.Option(None, "--js-dir", help="📂 Directory to save JavaScript files."),
 ):
     asyncio.run(
         run_scraper(
@@ -161,7 +160,6 @@ def scrape(
             same_origin,
             include_static,
             crawl,
-            js_dir,
         )
     )
 
@@ -233,7 +231,6 @@ async def run_scraper(
     same_origin,
     include_static,
     crawl,
-    js_dir,
 ):
     login_url = None if not login else (login if "://" in login else f"https://{login}")
     dashboard_url = dashboard if "://" in dashboard else f"https://{dashboard}"
@@ -241,7 +238,6 @@ async def run_scraper(
     tmp_profile = tempfile.TemporaryDirectory()
     atexit.register(tmp_profile.cleanup)
     endpoints = []
-    js_files = {}
 
     async with async_playwright() as p:
         context = await p.chromium.launch_persistent_context(
@@ -279,21 +275,8 @@ async def run_scraper(
             except Exception:
                 pass
 
-        async def on_response(resp):
-            try:
-                if resp.request.resource_type != "script":
-                    return
-                if same_origin and not is_same_origin(resp.url, base_origin):
-                    return
-                if js_dir is None:
-                    return
-                js_files[resp.url] = await resp.body()
-            except Exception:
-                pass
-
-        # capture network requests and script responses from all pages in the context
+        # capture network requests from all pages in the context
         context.on("request", on_request)
-        context.on("response", on_response)
 
         # scrape the dashboard itself
         dom_eps, crawl_links = await scrape_current_page(dash, base_origin, same_origin, stay)
@@ -322,17 +305,6 @@ async def run_scraper(
                     await page.close()
 
         await context.close()
-
-    js_saved = 0
-    if js_dir:
-        for url, content in js_files.items():
-            parsed = urlparse(url)
-            dest = js_dir / parsed.netloc / Path(parsed.path.lstrip("/"))
-            if not dest.suffix:
-                dest = dest.with_suffix(".js")
-            dest.parent.mkdir(parents=True, exist_ok=True)
-            dest.write_bytes(content)
-            js_saved += 1
 
     seen = set()
     unique_eps = []
@@ -364,9 +336,6 @@ async def run_scraper(
     table.add_column("Metric")
     table.add_column("Value", justify="right")
     table.add_row("Endpoints", str(len(unique_eps)))
-    if js_dir:
-        table.add_row("JS files", str(js_saved))
-        table.add_row("JS dir", str(js_dir))
     if outputs:
         table.add_row("Saved to", ", ".join(outputs))
     else:
