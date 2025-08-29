@@ -44,19 +44,64 @@ async def wait_for_dashboard(context, expected_url, timeout) -> object:
     raise TimeoutError(f"Timed out waiting for dashboard at {expected_origin}")
 
 async def collect_dom_links(page, base_origin, same_origin=True):
-    sel_attrs = [("a", "href"), ("script", "src"), ("img", "src"), ("form", "action")]
+    """Return DOM-discovered endpoints and crawlable links.
+
+    The collector searches common attributes across a wider range of tags to
+    minimise missed resources. When ``same_origin`` is True, only links within
+    ``base_origin`` are returned. The function also extracts anchor links that
+    can be used for recursive crawling.
+    """
+
+    sel_attrs = [
+        ("a", "href"),
+        ("link", "href"),
+        ("script", "src"),
+        ("img", "src"),
+        ("img", "srcset"),
+        ("iframe", "src"),
+        ("source", "src"),
+        ("video", "src"),
+        ("audio", "src"),
+        ("form", "action"),
+        ("embed", "src"),
+    ]
     found = []
+    crawl_links = set()
     for tag, attr in sel_attrs:
         elems = await page.query_selector_all(f"{tag}[{attr}]")
         for el in elems:
             val = await el.get_attribute(attr)
             if not val:
                 continue
-            full_url = urljoin(page.url, val)
-            if same_origin and not is_same_origin(full_url, base_origin):
-                continue
-            found.append({"url": full_url, "source": "dom"})
-    return found
+            candidates = [val]
+            if attr == "srcset":
+                candidates = [v.strip().split(" ")[0] for v in val.split(",") if v.strip()]
+            for candidate in candidates:
+                full_url = urljoin(page.url, candidate)
+                if same_origin and not is_same_origin(full_url, base_origin):
+                    continue
+                found.append({"url": full_url, "source": "dom"})
+                # only crawl same-origin anchor links to avoid wandering the web
+                if tag == "a" and is_same_origin(full_url, base_origin):
+                    crawl_links.add(full_url)
+    return found, list(crawl_links)
+
+
+async def scrape_current_page(page, base_origin, same_origin, stay):
+    """Collect endpoints from the currently loaded page.
+
+    Performs a simple scroll to trigger lazy loading and returns both
+    discovered endpoints and links to potentially crawl.
+    """
+
+    dom_endpoints, crawl_links = await collect_dom_links(page, base_origin, same_origin)
+    await page.mouse.wheel(0, 2000)
+    await asyncio.sleep(stay)
+    await page.mouse.wheel(0, -2000)
+    more_endpoints, more_links = await collect_dom_links(page, base_origin, same_origin)
+    dom_endpoints.extend(more_endpoints)
+    crawl_links.extend(link for link in more_links if link not in crawl_links)
+    return dom_endpoints, crawl_links
 
 @app.callback()
 def main_help(ctx: typer.Context):
@@ -96,7 +141,7 @@ def scrape(
     headless: bool = typer.Option(False, "--headless/--headed", help="🙈 Run browser in headless mode (default: headed)"),
     same_origin: bool = typer.Option(True, "--same-origin/--any-origin", help="🌐 Limit endpoints to dashboard domain."),
     include_static: bool = typer.Option(True, "--include-static/--only-api", help="📦 Include static files like .js/.css"),
-    crawl: bool = typer.Option(False, "--crawl/--no-crawl", help="🧭 (Placeholder) Crawl subpages recursively."),
+    crawl: bool = typer.Option(False, "--crawl/--no-crawl", help="🧭 Crawl subpages recursively."),
 ):
     asyncio.run(run_scraper(login, dashboard, save, timeout, stay, headless, same_origin, include_static, crawl))
 
@@ -129,19 +174,43 @@ async def run_scraper(login, dashboard, save, timeout, stay, headless, same_orig
                     return
                 if not include_static and not guess_api_like(req.resource_type, req.url):
                     return
-                endpoints.append({"url": req.url, "source": "network", "type": req.resource_type})
-            except:
+                endpoints.append({
+                    "url": req.url,
+                    "source": "network",
+                    "type": req.resource_type,
+                    "method": req.method,
+                })
+            except Exception:
                 pass
 
-        dash.on("requestfinished", on_request)
-        endpoints += await collect_dom_links(dash, base_origin, same_origin)
-        await dash.mouse.wheel(0, 2000)
-        await asyncio.sleep(stay)
-        await dash.mouse.wheel(0, -2000)
-        endpoints += await collect_dom_links(dash, base_origin, same_origin)
+        # capture network requests from all pages in the context
+        context.on("request", on_request)
 
+        # scrape the dashboard itself
+        dom_eps, crawl_links = await scrape_current_page(dash, base_origin, same_origin, stay)
+        endpoints.extend(dom_eps)
+
+        # simple BFS crawl of same-origin anchor links
         if crawl:
-            console.print("[cyan]Crawling is not yet implemented. Placeholder active.[/cyan]")
+            visited = {dashboard_url}
+            queue = [link for link in crawl_links if link not in visited]
+            while queue:
+                url = queue.pop(0)
+                if url in visited:
+                    continue
+                visited.add(url)
+                page = await context.new_page()
+                try:
+                    await page.goto(url)
+                    sub_eps, sub_links = await scrape_current_page(page, base_origin, same_origin, stay)
+                    endpoints.extend(sub_eps)
+                    for l in sub_links:
+                        if l not in visited and l not in queue:
+                            queue.append(l)
+                except Exception:
+                    pass
+                finally:
+                    await page.close()
 
         await context.close()
 
