@@ -41,6 +41,9 @@ epscrapper --login LOGIN_URL --dashboard DASHBOARD_URL --sJ output.json
 
 # show results on screen without saving
 epscrapper --dashboard DASHBOARD_URL
+
+# include endpoints from a local JavaScript file
+epscrapper --dashboard DASHBOARD_URL --js app.js --sJ output.json
 ```
 
 Use `--sP` to save as plaintext and `--sC` for CSV output. If no save flags
@@ -51,6 +54,7 @@ are provided, endpoints are printed to the console.
 - Uses Chromium via Playwright for full authentication flows.
 - Waits for redirect to your dashboard before capturing.
 - Captures DOM links and network requests across all visited pages.
+- Optionally parses a local JavaScript file for URL patterns with `--js`.
 - Supports optional crawling of same-origin links with `--crawl` to uncover
   endpoints beyond the initial dashboard.
 - Searches a wide range of HTML tags and attributes to minimize missed
