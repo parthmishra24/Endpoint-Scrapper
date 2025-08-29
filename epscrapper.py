@@ -174,8 +174,20 @@ def update() -> None:
     try:
         if (repo_dir / ".git").exists():
             console.print("[cyan]Fetching latest changes...[/cyan]")
-            subprocess.run(["git", "fetch", "origin"], cwd=repo_dir, check=True)
-            subprocess.run(["git", "reset", "--hard", "origin/main"], cwd=repo_dir, check=True)
+            subprocess.run(
+                ["git", "fetch", "origin"],
+                cwd=repo_dir,
+                check=True,
+                stdout=subprocess.DEVNULL,
+                stderr=subprocess.DEVNULL,
+            )
+            subprocess.run(
+                ["git", "reset", "--hard", "origin/main"],
+                cwd=repo_dir,
+                check=True,
+                stdout=subprocess.DEVNULL,
+                stderr=subprocess.DEVNULL,
+            )
             console.print("[green]Update complete.[/green]")
             latest = subprocess.run(
                 ["git", "log", "-1", "--pretty=%B"],
@@ -189,7 +201,12 @@ def update() -> None:
         else:
             console.print("[cyan]Cloning repository...[/cyan]")
             dest = repo_dir.parent / "Endpoint-Scrapper"
-            subprocess.run(["git", "clone", repo_url, str(dest)], check=True)
+            subprocess.run(
+                ["git", "clone", repo_url, str(dest)],
+                check=True,
+                stdout=subprocess.DEVNULL,
+                stderr=subprocess.DEVNULL,
+            )
             console.print(f"[green]Repository cloned to {dest}[/green]")
             latest = subprocess.run(
                 ["git", "log", "-1", "--pretty=%B"],
