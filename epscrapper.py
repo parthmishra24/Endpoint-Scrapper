@@ -4,6 +4,7 @@ import json
 import time
 import tempfile
 import atexit
+import csv
 from pathlib import Path
 from urllib.parse import urlparse, urljoin
 
@@ -114,7 +115,7 @@ Collect web endpoints from authenticated pages using Playwright and Chromium.
 ## 🚀 Usage
 
 ```bash
-epscrapper --login LOGIN_URL --dashboard DASHBOARD_URL --save output.json
+epscrapper --login LOGIN_URL --dashboard DASHBOARD_URL --sJ output.json
 ```
 
 ## 📌 Features
@@ -125,7 +126,7 @@ epscrapper --login LOGIN_URL --dashboard DASHBOARD_URL --save output.json
 - Captures:
   - DOM links (href/src/action)
   - Network requests (XHR/fetch/etc.)
-- Outputs a JSON file with endpoint metadata
+- Saves endpoints as JSON, CSV, or plaintext
 - Pip-installable as `epscrapper`
 
         """)
@@ -135,7 +136,9 @@ epscrapper --login LOGIN_URL --dashboard DASHBOARD_URL --save output.json
 def scrape(
     login: str = typer.Option(..., help="🔐 Login URL to start authentication."),
     dashboard: str = typer.Option(..., help="🎯 Final dashboard URL after auth redirect."),
-    save: Path = typer.Option(..., help="💾 File path to save output JSON."),
+    s_p: Path = typer.Option(None, "--sP", help="💾 File path to save endpoints as plaintext."),
+    s_j: Path = typer.Option(None, "--sJ", help="💾 File path to save endpoints as JSON."),
+    s_c: Path = typer.Option(None, "--sC", help="💾 File path to save endpoints as CSV."),
     timeout: int = typer.Option(900, help="⏳ Max seconds to wait for dashboard (default: 900)"),
     stay: int = typer.Option(8, help="🕒 Seconds to wait on dashboard before scraping (default: 8)"),
     headless: bool = typer.Option(False, "--headless/--headed", help="🙈 Run browser in headless mode (default: headed)"),
@@ -143,9 +146,11 @@ def scrape(
     include_static: bool = typer.Option(True, "--include-static/--only-api", help="📦 Include static files like .js/.css"),
     crawl: bool = typer.Option(False, "--crawl/--no-crawl", help="🧭 Crawl subpages recursively."),
 ):
-    asyncio.run(run_scraper(login, dashboard, save, timeout, stay, headless, same_origin, include_static, crawl))
+    if not any([s_p, s_j, s_c]):
+        raise typer.BadParameter("Please provide at least one output file via --sP, --sJ, or --sC.")
+    asyncio.run(run_scraper(login, dashboard, s_p, s_j, s_c, timeout, stay, headless, same_origin, include_static, crawl))
 
-async def run_scraper(login, dashboard, save, timeout, stay, headless, same_origin, include_static, crawl):
+async def run_scraper(login, dashboard, s_p, s_j, s_c, timeout, stay, headless, same_origin, include_static, crawl):
     login_url = login if "://" in login else f"https://{login}"
     dashboard_url = dashboard if "://" in dashboard else f"https://{dashboard}"
     base_origin = normalize_origin(dashboard_url)
@@ -221,13 +226,30 @@ async def run_scraper(login, dashboard, save, timeout, stay, headless, same_orig
             unique_eps.append(ep)
             seen.add(ep["url"])
 
-    save.parent.mkdir(parents=True, exist_ok=True)
-    save.write_text(json.dumps(unique_eps, indent=2))
+    outputs = []
+    if s_j:
+        s_j.parent.mkdir(parents=True, exist_ok=True)
+        s_j.write_text(json.dumps(unique_eps, indent=2))
+        outputs.append(str(s_j))
+    if s_p:
+        s_p.parent.mkdir(parents=True, exist_ok=True)
+        s_p.write_text("\n".join(ep["url"] for ep in unique_eps))
+        outputs.append(str(s_p))
+    if s_c:
+        s_c.parent.mkdir(parents=True, exist_ok=True)
+        with s_c.open("w", newline="") as f:
+            writer = csv.DictWriter(f, fieldnames=["url", "source", "type", "method"])
+            writer.writeheader()
+            writer.writerows(unique_eps)
+        outputs.append(str(s_c))
     table = Table(title="Scrape Summary")
     table.add_column("Metric")
     table.add_column("Value", justify="right")
     table.add_row("Endpoints", str(len(unique_eps)))
-    table.add_row("Saved to", str(save))
+    if outputs:
+        table.add_row("Saved to", ", ".join(outputs))
+    else:
+        table.add_row("Saved to", "-")
     table.add_row("Dashboard", dashboard_url)
     console.print(table)
 

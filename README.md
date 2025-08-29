@@ -24,8 +24,10 @@ After installation the `epscrapper` command becomes available globally.
 ## Usage
 
 ```bash
-epscrapper --login LOGIN_URL --dashboard DASHBOARD_URL --save output.json
+epscrapper --login LOGIN_URL --dashboard DASHBOARD_URL --sJ output.json
 ```
+
+Use `--sP` to save as plaintext and `--sC` for CSV output.
 
 ## Features
 
@@ -36,7 +38,7 @@ epscrapper --login LOGIN_URL --dashboard DASHBOARD_URL --save output.json
   endpoints beyond the initial dashboard.
 - Searches a wide range of HTML tags and attributes to minimize missed
   resources.
-- Saves results as a structured JSON file.
+- Saves results as JSON, CSV, or plaintext files.
 
 ## Development
 
