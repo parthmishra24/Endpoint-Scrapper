@@ -148,8 +148,6 @@ def scrape(
     crawl: bool = typer.Option(False, "--crawl/--no-crawl", help="🧭 Crawl subpages recursively."),
     js_dir: Path = typer.Option(None, "--js-dir", help="📂 Directory to save JavaScript files."),
 ):
-    if not any([s_p, s_j, s_c]):
-        raise typer.BadParameter("Please provide at least one output file via --sP, --sJ, or --sC.")
     asyncio.run(
         run_scraper(
             login,
@@ -324,6 +322,9 @@ async def run_scraper(
             writer.writeheader()
             writer.writerows(unique_eps)
         outputs.append(str(s_c))
+    if not outputs:
+        for ep in unique_eps:
+            console.print(ep["url"])
     table = Table(title="Scrape Summary")
     table.add_column("Metric")
     table.add_column("Value", justify="right")
