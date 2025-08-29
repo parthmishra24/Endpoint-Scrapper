@@ -5,6 +5,7 @@ import time
 import tempfile
 import atexit
 import csv
+import subprocess
 from pathlib import Path
 from urllib.parse import urlparse, urljoin
 
@@ -149,6 +150,27 @@ def scrape(
     if not any([s_p, s_j, s_c]):
         raise typer.BadParameter("Please provide at least one output file via --sP, --sJ, or --sC.")
     asyncio.run(run_scraper(login, dashboard, s_p, s_j, s_c, timeout, stay, headless, same_origin, include_static, crawl))
+
+
+@app.command(help="⬇️ Update epscrapper to the latest commit from GitHub.")
+def update() -> None:
+    """Clone or pull the latest changes from the repository."""
+    repo_url = "https://github.com/parthmishra24/Endpoint-Scrapper.git"
+    repo_dir = Path(__file__).resolve().parent
+    try:
+        if (repo_dir / ".git").exists():
+            console.print("[cyan]Fetching latest changes...[/cyan]")
+            subprocess.run(["git", "fetch", "origin"], cwd=repo_dir, check=True)
+            subprocess.run(["git", "reset", "--hard", "origin/main"], cwd=repo_dir, check=True)
+            console.print("[green]Update complete.[/green]")
+        else:
+            console.print("[cyan]Cloning repository...[/cyan]")
+            dest = repo_dir.parent / "Endpoint-Scrapper"
+            subprocess.run(["git", "clone", repo_url, str(dest)], check=True)
+            console.print(f"[green]Repository cloned to {dest}[/green]")
+    except subprocess.CalledProcessError as exc:
+        console.print(f"[red]Update failed: {exc}[/red]")
+        raise typer.Exit(code=1)
 
 async def run_scraper(login, dashboard, s_p, s_j, s_c, timeout, stay, headless, same_origin, include_static, crawl):
     login_url = login if "://" in login else f"https://{login}"

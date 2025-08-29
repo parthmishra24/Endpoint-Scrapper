@@ -21,6 +21,15 @@ pip install -e .
 
 After installation the `epscrapper` command becomes available globally.
 
+To upgrade to the latest version at any time run:
+
+```
+epscrapper update
+```
+
+The command pulls the most recent commit from the official repository or
+clones it if the current installation isn't a git checkout.
+
 ## Usage
 
 ```bash
