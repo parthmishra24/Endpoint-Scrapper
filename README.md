@@ -31,7 +31,11 @@ epscrapper --login LOGIN_URL --dashboard DASHBOARD_URL --save output.json
 
 - Uses Chromium via Playwright for full authentication flows.
 - Waits for redirect to your dashboard before capturing.
-- Collects DOM links and network requests.
+- Captures DOM links and network requests across all visited pages.
+- Supports optional crawling of same-origin links with `--crawl` to uncover
+  endpoints beyond the initial dashboard.
+- Searches a wide range of HTML tags and attributes to minimize missed
+  resources.
 - Saves results as a structured JSON file.
 
 ## Development
