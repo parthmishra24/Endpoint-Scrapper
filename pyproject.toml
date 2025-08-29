@@ -1,0 +1,22 @@
+[build-system]
+requires = ["setuptools>=61.0"]
+build-backend = "setuptools.build_meta"
+
+[project]
+name = "epscrapper"
+version = "0.1.0"
+description = "Authenticated web endpoint collector"
+readme = "README.md"
+requires-python = ">=3.8"
+dependencies = [
+    "typer>=0.7",
+    "tldextract",
+    "rich",
+    "playwright",
+]
+
+[project.scripts]
+epscrapper = "epscrapper:app"
+
+[tool.setuptools]
+py-modules = ["epscrapper"]
