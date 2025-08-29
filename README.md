@@ -3,9 +3,20 @@
 Authenticated web endpoint collector powered by [Playwright](https://playwright.dev/).
 
 ## Installation
-
-```bash
-pip install .
+```
+git clone https://github.com/parthmishra24/Endpoint-Scrapper.git
+```
+```
+cd Endpoint-Scrapper
+```
+```
+python3 -m venv venv
+```
+```
+source venv/bin/activate
+```
+```
+pip install -e .
 ```
 
 After installation the `epscrapper` command becomes available globally.
