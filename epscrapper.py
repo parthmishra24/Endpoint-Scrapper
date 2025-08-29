@@ -177,11 +177,29 @@ def update() -> None:
             subprocess.run(["git", "fetch", "origin"], cwd=repo_dir, check=True)
             subprocess.run(["git", "reset", "--hard", "origin/main"], cwd=repo_dir, check=True)
             console.print("[green]Update complete.[/green]")
+            latest = subprocess.run(
+                ["git", "log", "-1", "--pretty=%B"],
+                cwd=repo_dir,
+                capture_output=True,
+                text=True,
+                check=True,
+            )
+            console.print("\n[bold]What's new![/bold]")
+            console.print(latest.stdout.strip())
         else:
             console.print("[cyan]Cloning repository...[/cyan]")
             dest = repo_dir.parent / "Endpoint-Scrapper"
             subprocess.run(["git", "clone", repo_url, str(dest)], check=True)
             console.print(f"[green]Repository cloned to {dest}[/green]")
+            latest = subprocess.run(
+                ["git", "log", "-1", "--pretty=%B"],
+                cwd=dest,
+                capture_output=True,
+                text=True,
+                check=True,
+            )
+            console.print("\n[bold]What's new![/bold]")
+            console.print(latest.stdout.strip())
     except subprocess.CalledProcessError as exc:
         console.print(f"[red]Update failed: {exc}[/red]")
         raise typer.Exit(code=1)
