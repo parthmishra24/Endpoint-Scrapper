@@ -133,10 +133,10 @@ epscrapper --login LOGIN_URL --dashboard DASHBOARD_URL --sJ output.json
         """)
         console.print(md)
 
-@app.command(help="🎯 Authenticate and collect endpoints from your dashboard.")
+@app.command(help="🎯 Collect endpoints from a dashboard, optionally after login.")
 def scrape(
-    login: str = typer.Option(..., help="🔐 Login URL to start authentication."),
-    dashboard: str = typer.Option(..., help="🎯 Final dashboard URL after auth redirect."),
+    login: str = typer.Option(None, help="🔐 Login URL to start authentication."),
+    dashboard: str = typer.Option(..., help="🎯 Dashboard URL to scrape."),
     s_p: Path = typer.Option(None, "--sP", help="💾 File path to save endpoints as plaintext."),
     s_j: Path = typer.Option(None, "--sJ", help="💾 File path to save endpoints as JSON."),
     s_c: Path = typer.Option(None, "--sC", help="💾 File path to save endpoints as CSV."),
@@ -173,7 +173,7 @@ def update() -> None:
         raise typer.Exit(code=1)
 
 async def run_scraper(login, dashboard, s_p, s_j, s_c, timeout, stay, headless, same_origin, include_static, crawl):
-    login_url = login if "://" in login else f"https://{login}"
+    login_url = None if not login else (login if "://" in login else f"https://{login}")
     dashboard_url = dashboard if "://" in dashboard else f"https://{dashboard}"
     base_origin = normalize_origin(dashboard_url)
     tmp_profile = tempfile.TemporaryDirectory()
@@ -187,10 +187,14 @@ async def run_scraper(login, dashboard, s_p, s_j, s_c, timeout, stay, headless, 
             args=["--disable-blink-features=AutomationControlled"],
         )
         page = await context.new_page()
-        await page.goto(login_url)
-        console.print("[green]Login window ready. Waiting for redirect to dashboard...[/green]")
-        dash = await wait_for_dashboard(context, dashboard_url, timeout)
-        await dash.bring_to_front()
+        if login_url:
+            await page.goto(login_url)
+            console.print("[green]Login window ready. Waiting for redirect to dashboard...[/green]")
+            dash = await wait_for_dashboard(context, dashboard_url, timeout)
+            await dash.bring_to_front()
+        else:
+            await page.goto(dashboard_url)
+            dash = page
 
         console.print("[yellow]Press [Enter] to start scraping...[/yellow]")
         input()

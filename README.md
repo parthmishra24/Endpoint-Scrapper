@@ -33,6 +33,10 @@ clones it if the current installation isn't a git checkout.
 ## Usage
 
 ```bash
+# scrape a public dashboard
+epscrapper --dashboard DASHBOARD_URL --sJ output.json
+
+# scrape after authenticating through a login page
 epscrapper --login LOGIN_URL --dashboard DASHBOARD_URL --sJ output.json
 ```
 
