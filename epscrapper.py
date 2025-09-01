@@ -6,7 +6,6 @@ import tempfile
 import atexit
 import csv
 import subprocess
-import re
 from pathlib import Path
 from urllib.parse import urlparse, urljoin
 
@@ -33,25 +32,6 @@ def guess_api_like(resource_type: str, url: str) -> bool:
         return True
     path = urlparse(url).path.lower()
     return any(k in path for k in ["/api/", "/v1/", "/graphql", "/rest/"])
-
-
-def extract_js_endpoints(js_path: Path, base_origin: str):
-    """Extract URL-like strings from a JavaScript file."""
-    try:
-        text = js_path.read_text(errors="ignore")
-    except Exception:
-        return []
-
-    endpoints = []
-    abs_pattern = re.compile(r"https?://[^\s'\"\\]+")
-    for match in abs_pattern.findall(text):
-        endpoints.append({"url": match, "source": "js"})
-
-    rel_pattern = re.compile(r"['\"](/[^'\"\\]+)['\"]")
-    for rel in rel_pattern.findall(text):
-        endpoints.append({"url": urljoin(base_origin, rel), "source": "js"})
-
-    return endpoints
 
 async def wait_for_dashboard(context, expected_url, timeout) -> object:
     expected_origin = normalize_origin(expected_url)
@@ -166,7 +146,6 @@ def scrape(
     same_origin: bool = typer.Option(True, "--same-origin/--any-origin", help="🌐 Limit endpoints to dashboard domain."),
     include_static: bool = typer.Option(True, "--include-static/--only-api", help="📦 Include static files like .js/.css"),
     crawl: bool = typer.Option(False, "--crawl/--no-crawl", help="🧭 Crawl subpages recursively."),
-    js: Path = typer.Option(None, "--js", help="📝 JavaScript file to scan for additional endpoints."),
 ):
     asyncio.run(
         run_scraper(
@@ -181,7 +160,6 @@ def scrape(
             same_origin,
             include_static,
             crawl,
-            js,
         )
     )
 
@@ -253,7 +231,6 @@ async def run_scraper(
     same_origin,
     include_static,
     crawl,
-    js_file,
 ):
     login_url = None if not login else (login if "://" in login else f"https://{login}")
     dashboard_url = dashboard if "://" in dashboard else f"https://{dashboard}"
@@ -328,9 +305,6 @@ async def run_scraper(
                     await page.close()
 
         await context.close()
-
-    if js_file:
-        endpoints.extend(extract_js_endpoints(js_file, base_origin))
 
     seen = set()
     unique_eps = []
